@@ -7,6 +7,7 @@
 
 #define MAX_LIST_BOARDS 30
 #define MAX_LIST_THREADS 5
+#define MAX_THREAD_PREVIEW_CHARS 300
 
 #define KEY_NAVIGATE_UP 0x41
 #define KEY_NAVIGATE_DOWN 0x42
@@ -20,6 +21,7 @@
 
 #define UNSELECTED_BOARD_ESCAPE "\x1b[36m"
 #define SELECTED_BOARD_ESCAPE "\x1b[31m"
+#define BOARD_TITLE_ESCAPE "\x1b[34m"
 #define END_ESCAPE "\033[0m"
 
 int selected_board = 0;
@@ -85,18 +87,31 @@ void print_boards() {
 	}
 }
 
+int check_cjson_string(cJSON *cj) {
+    return cJSON_IsString(cj) && (cj->valuestring != NULL);
+}
+
 void print_thread(int i) {
 	cJSON *thread = cJSON_GetArrayItem(threads, i);
 	cJSON *posts = cJSON_GetObjectItemCaseSensitive(thread, "posts");
 	int posts_size = cJSON_GetArraySize(posts);
 	cJSON *op = cJSON_GetArrayItem(posts, 0);
 	cJSON *opCom = cJSON_GetObjectItemCaseSensitive(op, "com");
-
-	if(cJSON_IsString(opCom) && (opCom->valuestring != NULL)) {
-        printf("%sposts:%s %i\n", i == selected_thread ? SELECTED_BOARD_ESCAPE : UNSELECTED_BOARD_ESCAPE, END_ESCAPE, posts_size);
+    cJSON *opSub = cJSON_GetObjectItemCaseSensitive(op, "sub");
+    char *opCharSub;
+    if(check_cjson_string(opSub)) {
+        opCharSub = opSub->valuestring;
+    } else opCharSub = "";
+	if(check_cjson_string(opCom)) {
+        
+        printf("%sposts:%s %i | %s%s%s\n", i == selected_thread ? SELECTED_BOARD_ESCAPE : UNSELECTED_BOARD_ESCAPE, END_ESCAPE, posts_size, BOARD_TITLE_ESCAPE, opCharSub, END_ESCAPE);
 		char *opCharCom = opCom->valuestring;
 		char *innerText = htmlInnerText(opCharCom);
-		printf("%s\n\n", innerText);
+        if(i != selected_thread) {
+            char preview[MAX_THREAD_PREVIEW_CHARS];
+            strncpy(preview, innerText, MAX_THREAD_PREVIEW_CHARS);
+		    printf("%s%s\n\n", preview, strlen(innerText) > MAX_THREAD_PREVIEW_CHARS ? "..." : "");
+        } else printf("%s\n\n", innerText);
 		free(innerText);
 		return;
 	}
