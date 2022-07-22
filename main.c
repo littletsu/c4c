@@ -5,8 +5,8 @@
 #include "request.h"
 #include "html.h"
 
-#define COM_PREVIEW_LENGTH 50
 #define MAX_LIST_BOARDS 30
+#define MAX_LIST_THREADS 5
 
 #define KEY_NAVIGATE_UP 0x41
 #define KEY_NAVIGATE_DOWN 0x42
@@ -18,7 +18,12 @@
 #define STATE_SELECTING 0
 #define STATE_VIEWING 1
 
+#define UNSELECTED_BOARD_ESCAPE "\x1b[36m"
+#define SELECTED_BOARD_ESCAPE "\x1b[31m"
+#define END_ESCAPE "\033[0m"
+
 int selected_board = 0;
+int selected_thread = 0;
 int boards_size = 0;
 
 int key;
@@ -51,7 +56,6 @@ void get_board_threads() {
 	struct BoardInfo board_info = get_board_from_boards(selected_board);
 	char *url;
 	asprintf(&url, "https://a.4cdn.org/%s/%i.json", board_info.name, 1);
-	printf("%s", url);
 	struct MemoryStruct chunk = request(url);
 	board_json = cJSON_ParseWithLength(chunk.memory, chunk.size);
 	threads = cJSON_GetObjectItemCaseSensitive(board_json, "threads");
@@ -85,11 +89,11 @@ void print_thread(int i) {
 	cJSON *thread = cJSON_GetArrayItem(threads, i);
 	cJSON *posts = cJSON_GetObjectItemCaseSensitive(thread, "posts");
 	int posts_size = cJSON_GetArraySize(posts);
-	printf("posts: %i\n", posts_size);
 	cJSON *op = cJSON_GetArrayItem(posts, 0);
 	cJSON *opCom = cJSON_GetObjectItemCaseSensitive(op, "com");
 
 	if(cJSON_IsString(opCom) && (opCom->valuestring != NULL)) {
+        printf("%sposts:%s %i\n", i == selected_thread ? SELECTED_BOARD_ESCAPE : UNSELECTED_BOARD_ESCAPE, END_ESCAPE, posts_size);
 		char *opCharCom = opCom->valuestring;
 		char *innerText = htmlInnerText(opCharCom);
 		printf("%s\n\n", innerText);
@@ -97,21 +101,21 @@ void print_thread(int i) {
 		return;
 	}
 
-	printf("empty\n\n");
+	printf("\n\n\n");
 	return;
 	
 }
 
 void print_threads() {
 	clear_screen();
-	printf("got %i threads\n", threads_size);
-	for(int i = 0; i < threads_size; i++) {
-		print_thread(i);
+	
+	for(int i = selected_thread; i < (selected_thread + MAX_LIST_THREADS); i++) {
+	    print_thread(i);
 	}
 }
 
 void stateSelecting() {
-	switch(key) {
+    switch(key) {
 		case KEY_NAVIGATE_UP:
 			selected_board--;
 			print_boards();
@@ -133,7 +137,24 @@ void stateSelecting() {
 }
 
 void stateViewing() {
-	print_threads();
+    printf("got %i threads\n", threads_size);
+    print_threads();
+	switch(key) {
+		case KEY_NAVIGATE_UP:
+			selected_thread--;
+			print_threads();
+			break;
+		case KEY_NAVIGATE_DOWN:
+			selected_thread++;
+			print_threads();
+			break;
+		case KEY_ENTER:
+			break;
+		case KEY_NAVIGATE_RIGHT:
+			break;
+		case KEY_NAVIGATE_LEFT:
+			break;
+	};
 };
 
 int main(void) {
