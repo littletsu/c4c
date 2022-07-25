@@ -26,6 +26,7 @@
 
 int selected_board = 0;
 int selected_thread = 0;
+int selected_page = 1;
 int boards_size = 0;
 
 int key;
@@ -55,17 +56,23 @@ struct BoardInfo get_board_from_boards(int i) {
 }
 
 void get_board_threads() {
+    clear_screen();
+
     struct BoardInfo board_info = get_board_from_boards(selected_board);
+    printf("Loading page %i on /%s/ ...\n", selected_page, board_info.name);
     char *url;
-    asprintf(&url, "https://a.4cdn.org/%s/%i.json", board_info.name, 1);
+    asprintf(&url, "https://a.4cdn.org/%s/%i.json", board_info.name, selected_page);
     struct MemoryStruct chunk = request(url);
     board_json = cJSON_ParseWithLength(chunk.memory, chunk.size);
     threads = cJSON_GetObjectItemCaseSensitive(board_json, "threads");
     threads_size = cJSON_GetArraySize(threads);
     free(chunk.memory);
+    selected_thread = 0;
 }
 
 void get_boards() {
+    clear_screen();
+    printf("Getting boards...\n");
     struct MemoryStruct chunk = request("https://a.4cdn.org/boards.json");
 
     json = cJSON_ParseWithLength(chunk.memory, chunk.size);
@@ -109,8 +116,8 @@ void print_thread(int i) {
         char *innerText = htmlInnerText(opCharCom);
         if(i != selected_thread) {
             char preview[MAX_THREAD_PREVIEW_CHARS];
-            strncpy(preview, innerText, MAX_THREAD_PREVIEW_CHARS-1);
-            preview[MAX_THREAD_PREVIEW_CHARS] = "\0";
+            strncpy(preview, innerText, MAX_THREAD_PREVIEW_CHARS);
+            preview[MAX_THREAD_PREVIEW_CHARS] = 0;
             printf("%s%s\n\n", preview, strlen(innerText) > MAX_THREAD_PREVIEW_CHARS ? "..." : "");
         } else printf("%s\n\n", innerText);
         free(innerText);
@@ -167,8 +174,14 @@ void stateViewing() {
         case KEY_ENTER:
             break;
         case KEY_NAVIGATE_RIGHT:
+            selected_page++;
+            get_board_threads();
+            print_threads();
             break;
         case KEY_NAVIGATE_LEFT:
+            selected_page--;
+            get_board_threads();
+            print_threads();
             break;
     };
 };
