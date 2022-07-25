@@ -109,7 +109,8 @@ void print_thread(int i) {
         char *innerText = htmlInnerText(opCharCom);
         if(i != selected_thread) {
             char preview[MAX_THREAD_PREVIEW_CHARS];
-            strncpy(preview, innerText, MAX_THREAD_PREVIEW_CHARS);
+            strncpy(preview, innerText, MAX_THREAD_PREVIEW_CHARS-1);
+            preview[MAX_THREAD_PREVIEW_CHARS] = "\0";
             printf("%s%s\n\n", preview, strlen(innerText) > MAX_THREAD_PREVIEW_CHARS ? "..." : "");
         } else printf("%s\n\n", innerText);
         free(innerText);
